@@ -1,9 +1,22 @@
+/* =====================================================
+   ABA TERMINAL
+   Versione 1.1.0
+===================================================== */
+
 const APP = {
 
     nome: "ABA Terminal",
 
-    versione: "1.0.1",
+    versione: "1.1.0",
 
-    formatoExport: "A;L;Q"
+    autore: "ABA Bilance",
+
+    colore: "#1b5e20",
+
+    fileCSV: "Inventario",
+
+    separatoreCSV: ";",
+
+    quantitaPredefinita: 1
 
 };

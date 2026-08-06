@@ -1,14 +1,46 @@
-let scanner = null;
+/* ===========================================
+   ABA TERMINAL v1.0
+   scanner.js
+=========================================== */
+
+let htmlScanner = null;
+
+let modalitaScanner = "prodotto";
+
+document.getElementById("btnScanner").addEventListener("click", function () {
+
+    modalitaScanner = "prodotto";
+
+    avviaScanner();
+
+});
+
+document.getElementById("btnScannerMatricola").addEventListener("click", function () {
+
+    modalitaScanner = "matricola";
+
+    avviaScanner();
+
+});
+
 
 function avviaScanner() {
 
-    if (scanner !== null) return;
+    document.getElementById("reader").style.display = "block";
 
-    scanner = new Html5Qrcode("reader");
+    if (htmlScanner != null) {
 
-    scanner.start(
+        htmlScanner.clear();
 
-        { facingMode: "environment" },
+    }
+
+    htmlScanner = new Html5Qrcode("reader");
+
+    htmlScanner.start(
+
+        {
+            facingMode: "environment"
+        },
 
         {
             fps: 10,
@@ -21,12 +53,23 @@ function avviaScanner() {
 
 }
 
+
 function codiceLetto(codice) {
 
-    document.getElementById("barcode").value = codice;
+    htmlScanner.stop().then(function () {
 
-    scanner.stop();
+        document.getElementById("reader").style.display = "none";
 
-    scanner = null;
+    });
+
+    if (modalitaScanner == "prodotto") {
+
+        document.getElementById("barcode").value = codice;
+
+    } else {
+
+        document.getElementById("matricola").value = codice;
+
+    }
 
 }
