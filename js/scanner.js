@@ -3,40 +3,40 @@
    scanner.js
 =========================================== */
 
-let htmlScanner = null;
-
+let scanner = null;
 let modalitaScanner = "prodotto";
 
-document.getElementById("btnScanner").addEventListener("click", function () {
+window.addEventListener("load", function () {
 
-    modalitaScanner = "prodotto";
+    document.getElementById("btnScanner")
+        .addEventListener("click", function () {
 
-    avviaScanner();
+            modalitaScanner = "prodotto";
+            avviaScanner();
 
-});
+        });
 
-document.getElementById("btnScannerMatricola").addEventListener("click", function () {
+    document.getElementById("btnScannerMatricola")
+        .addEventListener("click", function () {
 
-    modalitaScanner = "matricola";
+            modalitaScanner = "matricola";
+            avviaScanner();
 
-    avviaScanner();
+        });
 
 });
 
 
 function avviaScanner() {
 
-    document.getElementById("reader").style.display = "block";
+    const reader = document.getElementById("reader");
 
-    if (htmlScanner != null) {
+    reader.style.display = "block";
+    reader.innerHTML = "";
 
-        htmlScanner.clear();
+    scanner = new Html5Qrcode("reader");
 
-    }
-
-    htmlScanner = new Html5Qrcode("reader");
-
-    htmlScanner.start(
+    scanner.start(
 
         {
             facingMode: "environment"
@@ -44,32 +44,43 @@ function avviaScanner() {
 
         {
             fps: 10,
-            qrbox: 250
+            qrbox: {
+                width: 250,
+                height: 120
+            }
         },
 
-        codiceLetto
+        function (decodedText) {
 
-    );
+            scanner.stop().then(function () {
 
-}
+                reader.style.display = "none";
+                reader.innerHTML = "";
 
+            });
 
-function codiceLetto(codice) {
+            if (modalitaScanner === "prodotto") {
 
-    htmlScanner.stop().then(function () {
+                document.getElementById("barcode").value = decodedText;
 
-        document.getElementById("reader").style.display = "none";
+            } else {
+
+                document.getElementById("matricola").value = decodedText;
+
+            }
+
+        },
+
+        function () {
+            // Ignora gli errori di lettura
+        }
+
+    ).catch(function (err) {
+
+        alert("Errore apertura fotocamera:\n" + err);
+
+        reader.style.display = "none";
 
     });
-
-    if (modalitaScanner == "prodotto") {
-
-        document.getElementById("barcode").value = codice;
-
-    } else {
-
-        document.getElementById("matricola").value = codice;
-
-    }
 
 }
