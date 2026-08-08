@@ -49,10 +49,6 @@ async function avviaScanner() {
 
     try {
 
-        /*
-        Recuperiamo le fotocamere disponibili.
-        */
-
         const cameras = await Html5Qrcode.getCameras();
 
 
@@ -61,11 +57,12 @@ async function avviaScanner() {
             throw new Error(
                 "Nessuna fotocamera disponibile."
             );
+
         }
 
 
         /*
-        Cerchiamo preferibilmente la fotocamera posteriore.
+        Cerchiamo la fotocamera posteriore.
         */
 
         let camera = cameras.find(function (c) {
@@ -84,16 +81,13 @@ async function avviaScanner() {
 
 
         /*
-        Se non viene identificata la posteriore,
-        usiamo la prima disponibile.
+        Se non viene identificata,
+        utilizziamo la prima disponibile.
         */
 
         if (!camera) {
             camera = cameras[0];
         }
-
-
-        console.log("Fotocamera utilizzata:", camera);
 
 
         const config = {
@@ -127,12 +121,6 @@ async function avviaScanner() {
         };
 
 
-        /*
-        Avvio tramite ID della fotocamera.
-        Questo evita completamente il problema
-        "facingMode".
-        */
-
         await scanner.start(
 
             camera.id,
@@ -148,7 +136,6 @@ async function avviaScanner() {
             function () {
 
                 // Nessun codice trovato.
-                // Non mostriamo errori continui.
 
             }
 
@@ -164,7 +151,6 @@ async function avviaScanner() {
 
 
         scannerAttivo = false;
-
         scanner = null;
 
         reader.innerHTML = "";
@@ -197,7 +183,7 @@ function acquisizioneRiuscita(testo) {
 
 
     /*
-    Vibrazione.
+    Vibrazione alla lettura.
     */
 
     vibra();
@@ -211,64 +197,46 @@ function acquisizioneRiuscita(testo) {
 
 
     /*
-    BARCODE / CODICE PRODOTTO
+    CODICE PRODOTTO
     */
 
-    document.getElementById("barcode").value =
-        dati.barcode || "";
+    const barcode =
+        document.getElementById("barcode");
+
+    if (barcode) {
+        barcode.value = dati.barcode || "";
+    }
 
 
     /*
     MODELLO
     */
 
-    document.getElementById("modello").value =
-        dati.modello || "";
+    const modello =
+        document.getElementById("modello");
+
+    if (modello) {
+        modello.value = dati.modello || "";
+    }
 
 
     /*
     MATRICOLA
     */
 
-    document.getElementById("matricola").value =
-        dati.matricola || "";
+    const matricola =
+        document.getElementById("matricola");
+
+    if (matricola) {
+        matricola.value = dati.matricola || "";
+    }
 
 
     /*
-    Chiudiamo automaticamente la fotocamera
-    dopo una lettura valida.
+    Chiudiamo lo scanner dopo la lettura.
     */
 
     fermaScanner();
-
-
-    /*
-    Se abbiamo letto un QR JSON,
-    mostriamo il riepilogo.
-    */
-
-    if (dati.tipo === "qr-json") {
-
-        alert(
-
-            "QR acquisito.\n\n" +
-
-            "Modello: " +
-            (dati.modello || "-") +
-
-            "\n" +
-
-            "Matricola: " +
-            (dati.matricola || "-") +
-
-            "\n" +
-
-            "Codice prodotto: " +
-            (dati.barcode || "-")
-
-        );
-
-    }
 
 }
 
@@ -294,19 +262,188 @@ function interpretaCodice(testo) {
     };
 
 
-    let json;
+    const contenuto = testo.trim();
 
 
     /*
-    Se non è JSON, è semplicemente
-    un normale barcode.
+    ------------------------------------------------
+    TENTATIVO 1
+    JSON NORMALE
+    ------------------------------------------------
     */
 
     try {
 
-        json = JSON.parse(testo);
+        const json = JSON.parse(contenuto);
+
+        if (
+            json &&
+            json.macc
+        ) {
+
+            const macc = json.macc;
+
+
+            risultato.tipo = "qr-json";
+
+
+            /*
+            MODELLO
+            */
+
+            risultato.modello =
+                primoValore([
+
+                    macc.mod,
+
+                    json.mod,
+
+                    macc.model,
+
+                    json.model
+
+                ]);
+
+
+            /*
+            MATRICOLA
+            */
+
+            risultato.matricola =
+                primoValore([
+
+                    macc.matr,
+
+                    json.matr,
+
+                    macc.serial,
+
+                    json.serial
+
+                ]);
+
+
+            /*
+            CODICE PRODOTTO
+            */
+
+            risultato.barcode =
+                primoValore([
+
+                    macc.code,
+
+                    json.code,
+
+                    macc.productCode,
+
+                    json.productCode
+
+                ]);
+
+
+            /*
+            Se il codice non è direttamente
+            disponibile, controlliamo crt.
+            */
+
+            if (
+                !risultato.barcode &&
+                macc.crt
+            ) {
+
+                risultato.barcode =
+                    primoValore([
+
+                        macc.crt.code,
+
+                        macc.crt.cod,
+
+                        macc.crt.productCode
+
+                    ]);
+
+            }
+
+
+            /*
+            Se abbiamo trovato almeno un dato,
+            consideriamo il QR correttamente letto.
+            */
+
+            if (
+                risultato.modello ||
+                risultato.matricola ||
+                risultato.barcode
+            ) {
+
+                return risultato;
+
+            }
+
+        }
 
     } catch (errore) {
+
+        /*
+        Il contenuto non è JSON perfettamente valido.
+        Passiamo al metodo di estrazione testuale.
+        */
+
+    }
+
+
+    /*
+    ------------------------------------------------
+    TENTATIVO 2
+    ESTRAZIONE DIRETTA DAL TESTO DEL QR
+    ------------------------------------------------
+
+    Questo è importante per il tuo QR.
+
+    Cerchiamo direttamente:
+
+    "mod":"RT-30"
+    "matr":"3CEAM025150"
+    "code":"9911041"
+    ------------------------------------------------
+    */
+
+
+    const modelloQR =
+        estraiCampo(contenuto, "mod");
+
+
+    const matricolaQR =
+        estraiCampo(contenuto, "matr");
+
+
+    const codiceQR =
+        estraiCampo(contenuto, "code");
+
+
+    /*
+    Se abbiamo trovato almeno uno dei
+    campi tipici del QR della macchina,
+    lo consideriamo un QR macchina.
+    */
+
+    if (
+        modelloQR ||
+        matricolaQR ||
+        codiceQR
+    ) {
+
+        risultato.tipo = "qr-json";
+
+        risultato.modello =
+            modelloQR;
+
+        risultato.matricola =
+            matricolaQR;
+
+        risultato.barcode =
+            codiceQR;
+
 
         return risultato;
 
@@ -314,106 +451,14 @@ function interpretaCodice(testo) {
 
 
     /*
-    È un QR contenente JSON.
+    ------------------------------------------------
+    NORMALE BARCODE
+    ------------------------------------------------
     */
 
-    risultato.tipo = "qr-json";
+    risultato.tipo = "codice";
 
-
-    const macc =
-        json && json.macc
-            ? json.macc
-            : {};
-
-
-    /*
-    MODELLO
-    */
-
-    risultato.modello = primoValore([
-
-        macc.mod,
-
-        json.mod,
-
-        macc.model,
-
-        json.model
-
-    ]);
-
-
-    /*
-    MATRICOLA
-    */
-
-    risultato.matricola = primoValore([
-
-        macc.matr,
-
-        json.matr,
-
-        macc.serial,
-
-        json.serial
-
-    ]);
-
-
-    /*
-    CODICE PRODOTTO
-    */
-
-    risultato.barcode = primoValore([
-
-        macc.code,
-
-        json.code,
-
-        macc.productCode,
-
-        json.productCode
-
-    ]);
-
-
-    /*
-    Alcuni QR possono contenere
-    ulteriori dati dentro "crt".
-    */
-
-    if (!risultato.barcode && macc.crt) {
-
-        risultato.barcode = primoValore([
-
-            macc.crt.code,
-
-            macc.crt.cod,
-
-            macc.crt.productCode,
-
-            macc.crt.cusdis,
-
-            macc.crt.opedis
-
-        ]);
-
-    }
-
-
-    /*
-    Se non abbiamo trovato un campo
-    riconoscibile, conserviamo tutto
-    il contenuto del QR.
-    */
-
-    if (!risultato.barcode) {
-
-        risultato.barcode =
-            testo.trim();
-
-    }
-
+    risultato.barcode = contenuto;
 
     return risultato;
 
@@ -422,7 +467,50 @@ function interpretaCodice(testo) {
 
 /*
 ==================================================
-TROVA PRIMO VALORE VALIDO
+ESTRAI CAMPO DAL TESTO
+==================================================
+*/
+
+function estraiCampo(testo, campo) {
+
+    /*
+    Cerca:
+
+    "campo":"valore"
+
+    oppure:
+
+    "campo": "valore"
+    */
+
+    const regex =
+        new RegExp(
+            '"' +
+            campo +
+            '"\\s*:\\s*"([^"]*)"',
+            "i"
+        );
+
+
+    const risultato =
+        testo.match(regex);
+
+
+    if (risultato && risultato[1]) {
+
+        return risultato[1].trim();
+
+    }
+
+
+    return "";
+
+}
+
+
+/*
+==================================================
+PRIMO VALORE VALIDO
 ==================================================
 */
 
@@ -468,7 +556,9 @@ function vibra() {
 
     try {
 
-        if ("vibrate" in navigator) {
+        if (
+            "vibrate" in navigator
+        ) {
 
             navigator.vibrate([
                 120,
@@ -513,7 +603,8 @@ function fermaScanner() {
 
         reader.style.display = "none";
 
-        btn.textContent = "📷 SCANSIONA";
+        btn.textContent =
+            "📷 SCANSIONA";
 
         return;
 
