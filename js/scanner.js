@@ -1,22 +1,36 @@
 let scanner = null;
 let scannerAttivo = false;
+let modalitaScanner = "prodotto";
 
 document.addEventListener("DOMContentLoaded", function () {
 
-    const btn = document.getElementById("btnScanner");
+    const btnScanner = document.getElementById("btnScanner");
+    const btnMatricola = document.getElementById("btnMatricola");
 
-    if (btn) {
-
-        btn.addEventListener("click", function () {
+    if (btnScanner) {
+        btnScanner.addEventListener("click", function () {
 
             if (scannerAttivo) {
                 fermaScanner();
             } else {
+                modalitaScanner = "prodotto";
                 avviaScanner();
             }
 
         });
+    }
 
+    if (btnMatricola) {
+        btnMatricola.addEventListener("click", function () {
+
+            if (scannerAttivo) {
+                fermaScanner();
+            } else {
+                modalitaScanner = "matricola";
+                avviaScanner();
+            }
+
+        });
     }
 
 });
@@ -25,7 +39,13 @@ document.addEventListener("DOMContentLoaded", function () {
 async function avviaScanner() {
 
     const reader = document.getElementById("reader");
-    const btn = document.getElementById("btnScanner");
+
+    const btnScanner =
+        document.getElementById("btnScanner");
+
+    const btnMatricola =
+        document.getElementById("btnMatricola");
+
 
     if (typeof Html5Qrcode === "undefined") {
 
@@ -41,15 +61,29 @@ async function avviaScanner() {
     reader.style.display = "block";
     reader.innerHTML = "";
 
-    btn.textContent = "⏹ CHIUDI SCANNER";
+
+    if (modalitaScanner === "matricola") {
+
+        btnMatricola.textContent =
+            "⏹ CHIUDI LETTURA MATRICOLA";
+
+    } else {
+
+        btnScanner.textContent =
+            "⏹ CHIUDI SCANNER";
+
+    }
+
 
     scanner = new Html5Qrcode("reader");
+
     scannerAttivo = true;
 
 
     try {
 
-        const cameras = await Html5Qrcode.getCameras();
+        const cameras =
+            await Html5Qrcode.getCameras();
 
 
         if (!cameras || cameras.length === 0) {
@@ -62,26 +96,34 @@ async function avviaScanner() {
 
 
         /*
-        Cerchiamo la fotocamera posteriore.
+        Cerchiamo preferibilmente
+        la fotocamera posteriore.
         */
 
         let camera = cameras.find(function (c) {
 
-            const nome = (c.label || "").toLowerCase();
+            const nome =
+                (c.label || "").toLowerCase();
 
             return (
+
                 nome.includes("back") ||
+
                 nome.includes("rear") ||
+
                 nome.includes("environment") ||
+
                 nome.includes("posteriore") ||
+
                 nome.includes("post")
+
             );
 
         });
 
 
         /*
-        Se non viene identificata,
+        Se non troviamo la posteriore,
         utilizziamo la prima disponibile.
         */
 
@@ -104,16 +146,21 @@ async function avviaScanner() {
                 Html5QrcodeSupportedFormats.QR_CODE,
 
                 Html5QrcodeSupportedFormats.EAN_13,
+
                 Html5QrcodeSupportedFormats.EAN_8,
 
                 Html5QrcodeSupportedFormats.CODE_128,
+
                 Html5QrcodeSupportedFormats.CODE_39,
+
                 Html5QrcodeSupportedFormats.CODE_93,
 
                 Html5QrcodeSupportedFormats.CODABAR,
+
                 Html5QrcodeSupportedFormats.ITF,
 
                 Html5QrcodeSupportedFormats.UPC_A,
+
                 Html5QrcodeSupportedFormats.UPC_E
 
             ]
@@ -135,7 +182,10 @@ async function avviaScanner() {
 
             function () {
 
-                // Nessun codice trovato.
+                /*
+                Nessun codice trovato.
+                Non mostriamo errori.
+                */
 
             }
 
@@ -151,12 +201,19 @@ async function avviaScanner() {
 
 
         scannerAttivo = false;
+
         scanner = null;
 
         reader.innerHTML = "";
+
         reader.style.display = "none";
 
-        btn.textContent = "📷 SCANSIONA";
+
+        btnScanner.textContent =
+            "📷 SCANSIONA CODICE PRODOTTO";
+
+        btnMatricola.textContent =
+            "📷 LEGGI MATRICOLA";
 
 
         alert(
@@ -183,28 +240,67 @@ function acquisizioneRiuscita(testo) {
 
 
     /*
-    Vibrazione alla lettura.
+    VIBRAZIONE
     */
 
     vibra();
 
 
     /*
-    Interpretiamo il contenuto.
+    ==============================================
+    LETTURA MATRICOLA
+    ==============================================
     */
 
-    const dati = interpretaCodice(testo);
+    if (modalitaScanner === "matricola") {
+
+        const campoMatricola =
+            document.getElementById("matricola");
+
+
+        if (campoMatricola) {
+
+            campoMatricola.value =
+                testo.trim();
+
+        }
+
+
+        fermaScanner();
+
+        return;
+    }
+
+
+    /*
+    ==============================================
+    LETTURA CODICE PRODOTTO / QR
+    ==============================================
+    */
+
+    const dati =
+        interpretaCodice(testo);
+
+
+    const barcode =
+        document.getElementById("barcode");
+
+    const modello =
+        document.getElementById("modello");
+
+    const matricola =
+        document.getElementById("matricola");
 
 
     /*
     CODICE PRODOTTO
     */
 
-    const barcode =
-        document.getElementById("barcode");
-
     if (barcode) {
-        barcode.value = dati.barcode || "";
+
+        barcode.value =
+            dati.barcode || "";
+
     }
 
 
@@ -212,11 +308,11 @@ function acquisizioneRiuscita(testo) {
     MODELLO
     */
 
-    const modello =
-        document.getElementById("modello");
-
     if (modello) {
-        modello.value = dati.modello || "";
+
+        modello.value =
+            dati.modello || "";
+
     }
 
 
@@ -224,16 +320,16 @@ function acquisizioneRiuscita(testo) {
     MATRICOLA
     */
 
-    const matricola =
-        document.getElementById("matricola");
-
     if (matricola) {
-        matricola.value = dati.matricola || "";
+
+        matricola.value =
+            dati.matricola || "";
+
     }
 
 
     /*
-    Chiudiamo lo scanner dopo la lettura.
+    Chiudiamo lo scanner.
     */
 
     fermaScanner();
@@ -262,29 +358,33 @@ function interpretaCodice(testo) {
     };
 
 
-    const contenuto = testo.trim();
+    const contenuto =
+        testo.trim();
 
 
     /*
-    ------------------------------------------------
-    TENTATIVO 1
-    JSON NORMALE
-    ------------------------------------------------
+    ==============================================
+    TENTATIVO JSON
+    ==============================================
     */
 
     try {
 
-        const json = JSON.parse(contenuto);
+        const json =
+            JSON.parse(contenuto);
+
 
         if (
             json &&
             json.macc
         ) {
 
-            const macc = json.macc;
+            const macc =
+                json.macc;
 
 
-            risultato.tipo = "qr-json";
+            risultato.tipo =
+                "qr-json";
 
 
             /*
@@ -341,35 +441,6 @@ function interpretaCodice(testo) {
                 ]);
 
 
-            /*
-            Se il codice non è direttamente
-            disponibile, controlliamo crt.
-            */
-
-            if (
-                !risultato.barcode &&
-                macc.crt
-            ) {
-
-                risultato.barcode =
-                    primoValore([
-
-                        macc.crt.code,
-
-                        macc.crt.cod,
-
-                        macc.crt.productCode
-
-                    ]);
-
-            }
-
-
-            /*
-            Se abbiamo trovato almeno un dato,
-            consideriamo il QR correttamente letto.
-            */
-
             if (
                 risultato.modello ||
                 risultato.matricola ||
@@ -385,61 +456,59 @@ function interpretaCodice(testo) {
     } catch (errore) {
 
         /*
-        Il contenuto non è JSON perfettamente valido.
-        Passiamo al metodo di estrazione testuale.
+        Non è JSON perfettamente valido.
+        Passiamo all'estrazione testuale.
         */
 
     }
 
 
     /*
-    ------------------------------------------------
-    TENTATIVO 2
-    ESTRAZIONE DIRETTA DAL TESTO DEL QR
-    ------------------------------------------------
-
-    Questo è importante per il tuo QR.
-
-    Cerchiamo direttamente:
-
-    "mod":"RT-30"
-    "matr":"3CEAM025150"
-    "code":"9911041"
-    ------------------------------------------------
+    ==============================================
+    ESTRAZIONE DIRETTA DAL TESTO
+    ==============================================
     */
 
-
     const modelloQR =
-        estraiCampo(contenuto, "mod");
+        estraiCampo(
+            contenuto,
+            "mod"
+        );
 
 
     const matricolaQR =
-        estraiCampo(contenuto, "matr");
+        estraiCampo(
+            contenuto,
+            "matr"
+        );
 
 
     const codiceQR =
-        estraiCampo(contenuto, "code");
+        estraiCampo(
+            contenuto,
+            "code"
+        );
 
-
-    /*
-    Se abbiamo trovato almeno uno dei
-    campi tipici del QR della macchina,
-    lo consideriamo un QR macchina.
-    */
 
     if (
+
         modelloQR ||
         matricolaQR ||
         codiceQR
+
     ) {
 
-        risultato.tipo = "qr-json";
+        risultato.tipo =
+            "qr-json";
+
 
         risultato.modello =
             modelloQR;
 
+
         risultato.matricola =
             matricolaQR;
+
 
         risultato.barcode =
             codiceQR;
@@ -451,14 +520,18 @@ function interpretaCodice(testo) {
 
 
     /*
-    ------------------------------------------------
+    ==============================================
     NORMALE BARCODE
-    ------------------------------------------------
+    ==============================================
     */
 
-    risultato.tipo = "codice";
+    risultato.tipo =
+        "codice";
 
-    risultato.barcode = contenuto;
+
+    risultato.barcode =
+        contenuto;
+
 
     return risultato;
 
@@ -467,21 +540,11 @@ function interpretaCodice(testo) {
 
 /*
 ==================================================
-ESTRAI CAMPO DAL TESTO
+ESTRAZIONE CAMPO QR
 ==================================================
 */
 
 function estraiCampo(testo, campo) {
-
-    /*
-    Cerca:
-
-    "campo":"valore"
-
-    oppure:
-
-    "campo": "valore"
-    */
 
     const regex =
         new RegExp(
@@ -496,7 +559,10 @@ function estraiCampo(testo, campo) {
         testo.match(regex);
 
 
-    if (risultato && risultato[1]) {
+    if (
+        risultato &&
+        risultato[1]
+    ) {
 
         return risultato[1].trim();
 
@@ -560,10 +626,14 @@ function vibra() {
             "vibrate" in navigator
         ) {
 
+            /*
+            Vibrazione breve ma evidente.
+            */
+
             navigator.vibrate([
-                120,
-                60,
-                120
+                150,
+                70,
+                150
             ]);
 
         }
@@ -581,7 +651,7 @@ function vibra() {
 
 /*
 ==================================================
-CHIUDI SCANNER
+CHIUSURA SCANNER
 ==================================================
 */
 
@@ -590,8 +660,13 @@ function fermaScanner() {
     const reader =
         document.getElementById("reader");
 
-    const btn =
+
+    const btnScanner =
         document.getElementById("btnScanner");
+
+
+    const btnMatricola =
+        document.getElementById("btnMatricola");
 
 
     scannerAttivo = false;
@@ -601,10 +676,17 @@ function fermaScanner() {
 
         reader.innerHTML = "";
 
-        reader.style.display = "none";
+        reader.style.display =
+            "none";
 
-        btn.textContent =
-            "📷 SCANSIONA";
+
+        btnScanner.textContent =
+            "📷 SCANSIONA CODICE PRODOTTO";
+
+
+        btnMatricola.textContent =
+            "📷 LEGGI MATRICOLA";
+
 
         return;
 
@@ -623,7 +705,9 @@ function fermaScanner() {
 
         .catch(function () {
 
-            // Fotocamera già chiusa.
+            /*
+            Fotocamera già chiusa.
+            */
 
         })
 
@@ -635,17 +719,26 @@ function fermaScanner() {
 
                 .catch(function () {
 
-                    // Reader già pulito.
+                    /*
+                    Reader già pulito.
+                    */
 
                 });
 
 
             reader.innerHTML = "";
 
-            reader.style.display = "none";
+            reader.style.display =
+                "none";
 
-            btn.textContent =
-                "📷 SCANSIONA";
+
+            btnScanner.textContent =
+                "📷 SCANSIONA CODICE PRODOTTO";
+
+
+            btnMatricola.textContent =
+                "📷 LEGGI MATRICOLA";
+
 
         });
 
